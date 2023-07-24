@@ -4,8 +4,34 @@
   <meta charset="UTF-8">
   <title>Title</title>
 </head>
-<body>
+<script
+        src="https://code.jquery.com/jquery-3.7.0.js"
+        integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM="
+        crossorigin="anonymous"></script>
 <script>
+
+  function sendMsg2(){
+    var msg = document.getElementById("sendMsg").value;
+    socket.send(JSON.stringify({
+      uid:"192.168.1.18",
+      msg:msg
+    }))
+  }
+</script>
+<body>
+<form onsubmit="return false">
+  <textarea id="responseText" style="height: 150px; width: 300px;" readonly></textarea>
+
+
+  <textarea id="sendMsg" style="height: 150px;width:300px"></textarea>
+
+  <input onclick="sendMsg2();" type="button" value="发送消息"/>
+</form>
+
+
+</body>
+<script type="text/javascript">
+
   var socket;
   // 判断当前浏览器是否支持webSocket
   if(window.WebSocket){
@@ -36,12 +62,6 @@
   }
 
 
+
 </script>
-<form onsubmit="return false">
-  <textarea id="responseText" style="height: 150px; width: 300px;"></textarea>
-  <input type="button" value="清空内容" onclick="document.getElementById('responseText').value=''">
-</form>
-
-
-</body>
 </html>

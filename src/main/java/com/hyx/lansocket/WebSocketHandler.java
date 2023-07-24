@@ -28,16 +28,15 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<TextWebSocketF
         log.info("服务器收到消息：{}",msg.text());
 
         // 获取用户ID,关联channel
-        JSONObject jsonObject = JSONUtil.parseObj(msg.text());
-        String uid = jsonObject.getStr("uid");
-        NettyConfig.getChannelMap().put(uid,ctx.channel());
+        SocketMsg socketMsg = JSONUtil.toBean(msg.text(), SocketMsg.class);
+        NettyConfig.getChannelMap().put(socketMsg.getUid(),ctx.channel());
 
         // 将用户ID作为自定义属性加入到channel中，方便随时channel中获取用户ID
         AttributeKey<String> key = AttributeKey.valueOf("userId");
-        ctx.channel().attr(key).setIfAbsent(uid);
+        ctx.channel().attr(key).setIfAbsent(socketMsg.getUid());
 
         // 回复消息
-        ctx.channel().writeAndFlush(new TextWebSocketFrame("服务器连接成功！"));
+        ctx.channel().writeAndFlush(new TextWebSocketFrame("succ"));
     }
 
     @Override
