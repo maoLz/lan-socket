@@ -8,60 +8,190 @@
         src="https://code.jquery.com/jquery-3.7.0.js"
         integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM="
         crossorigin="anonymous"></script>
-<script>
-
-  function sendMsg2(){
-    var msg = document.getElementById("sendMsg").value;
-    socket.send(JSON.stringify({
-      uid:"192.168.1.18",
-      msg:msg
-    }))
+<script src="https://cdn.staticfile.org/clipboard.js/2.0.4/clipboard.min.js"></script>
+<style>
+  *{
+    margin: 0;
+    padding: 0;
   }
-</script>
+  textarea{
+    font-family: 华文楷体;
+  }
+  html,body{
+    width: 100%;
+    height: 100%;
+  }
+  .msg{
+    border: 1px solid;
+    margin: 5px 10px;
+    padding: 10px;
+    background: azure;
+  }
+  .msg >div{
+    font-size: 16px;
+    padding-bottom: 2px;
+  }
+  label{
+    padding: 20px;
+  }
+  .btn{
+    margin: 5px;
+    display: block;
+    width: 150px;
+    height: 50px;
+    background-color: rgb(40, 122, 228);
+    color: white;
+    text-decoration: none;
+    text-align: center;
+    line-height: 50px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  .btn:hover{
+    background-color: rgb(83, 142, 219);
+  }
+
+  .tip{
+    border-bottom: 1px solid;
+    text-align: center;
+  }
+
+
+</style>
 <body>
-<form onsubmit="return false">
-  <textarea id="responseText" style="height: 150px; width: 300px;" readonly></textarea>
+<div style="width: 100%;height: 100%;display:flex;background: aliceblue">
+<div style="width: 50%;height: 100%;background: aquamarine;overflow: auto">
+  <div style="height: 100%;width: 100%" id ="msgDiv">
 
+  </div>
+  </div>
+  <div style="width: 50%;height: 100%;background: antiquewhite">
+    <div style="height: 200px;width: 100%;">
+      <textarea id="text" style="margin: 0 5px;width:90%;height: 100%;font-size: 16px;line-height: 20px;padding: 5px;resize: none"></textarea>
+    </div>
+    <div style="text-align: center;padding: 20px;display: flex">
+      <a class="btn" onclick="sendMsg()" >发送</a>
+    </div>
+  </div>
 
-  <textarea id="sendMsg" style="height: 150px;width:300px"></textarea>
-
-  <input onclick="sendMsg2();" type="button" value="发送消息"/>
-</form>
+</div>
 
 
 </body>
 <script type="text/javascript">
+  uid = getUuid();
+  const $msgDiv = $("#msgDiv");
+  const windowHeight = document.body.offsetHeight;
 
-  var socket;
-  // 判断当前浏览器是否支持webSocket
-  if(window.WebSocket){
-    socket = new WebSocket("ws://192.168.1.18:58080/webSocket")
-    // 相当于channel的read事件，ev 收到服务器回送的消息
-    socket.onmessage = function (ev) {
-      var rt = document.getElementById("responseText");
-      rt.value = rt.value + "\n" + ev.data;
+  if(!window.WebSocket){
+    alert("该浏览器，不支持websocket");
+  }
+  $.ajax({
+    url:"/msg/listMsg",
+    async: false,
+    success: function(res){
+      var arr = res.data;
+      arr.forEach(e => {
+        $msgDiv.append(formatMsg(e));
+      })
     }
-    // 相当于连接开启
-    socket.onopen = function (ev) {
-      var rt = document.getElementById("responseText");
-      rt.value =  "加入连接"
-      socket.send(
-              JSON.stringify({
-                // 连接成功将，用户ID传给服务端
-                uid: "192.168.1.18"
-              })
-      );
+  })
+  $.get("/msg/listMsg",function(res){
+
+  });
+
+  socket = new WebSocket("ws://192.168.1.18:58080/webSocket");
+
+
+  socket.onopen = function(){
+    socket.send(
+            JSON.stringify({
+              uid: uid,
+              data: "connecting"
+            })
+    )
+  }
+
+  socket.onmessage = function (ev){
+    let data = ev.data;
+    if(data){
+      var obj = JSON.parse(data);
+      $msgDiv.append(formatData(obj));
+      if(obj.type == "1" && obj.data.indexOf("connect") == 0){
+        createEmpty();
+      }
+      toBottom();
     }
-    // 相当于连接关闭
-    socket.onclose = function (ev) {
-      var rt = document.getElementById("responseText");
-      rt.value = rt.value + "\n" + "连接关闭了...";
+  }
+
+  function createEmpty(){
+    $("#emp").remove();
+    var needAddHeight = $("#head")[0].offsetTop;
+    if(needAddHeight > windowHeight){
+      needAddHeight == windowHeight;
     }
-  }else{
-    alert("当前浏览器不支持webSocket")
+    var msgDiv =document.getElementById("msgDiv");
+    $msgDiv.height($(msgDiv).height() + needAddHeight);
+  }
+
+  function toBottom(){
+    $msgDiv.parent()[0].scrollTop =document.getElementById("msgDiv").scrollHeight;
+  }
+
+  function formatData(obj){
+    if(obj.type == "1"){
+      return formatTips(obj.data);
+    }
+    if(obj.type == "2"){
+      return formatMsg(obj.data);
+    }
+  }
+
+  function formatTips(data){
+    var str = "";
+    var id = data.indexOf("connect")==0 ?"head":"";
+    str += "<div class='tip' id='"+id+"'>"+data+"</div>"
+    return str;
+  }
+
+  function formatMsg(data){
+    var str = "";
+    str += "<div class=\"msg\">";
+    str += "<div>uid:<label>"+data.uid+"</label></div>";
+    str += "<div>ip:<label>"+data.ip+"</label></div>";
+    str += "<div>date:<label>"+data.date+"</label></div>";
+    str += "<div>data:<label class='data' style='cursor: pointer;font-weight: bold' >"+data.data+"</label></div>";
+    return str;
+  }
+
+  new ClipboardJS('.data', {
+    text: function(trigger) {
+      return trigger.innerText;
+    }
+  }).on('success', function(e) {
+    e.clearSelection();
+  }).on('error', function(e) {
+    alert('Error!');
+  });
+
+  function sendMsg(){
+    var text = $("#text").val();
+    socket.send(
+            JSON.stringify({
+              uid: uid,
+              data: text
+            })
+    )
+    $("#text").val("");
   }
 
 
-
+  function getUuid() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      var r = (Math.random() * 16) | 0,
+              v = c == 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
 </script>
 </html>
